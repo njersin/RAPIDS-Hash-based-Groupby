@@ -31,5 +31,5 @@ __device__ uint32_t crc_x64_32_hash(const T* d_key_columns,
         hash = c_crc_x64_32_tab[(hash ^ message)] ^ (hash >> 16);
     }
 
-    return hash;
+    return hash ^ 0xffffffff;
 }
