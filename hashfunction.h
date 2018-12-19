@@ -9,7 +9,7 @@
 #define HASH_TAB_SIZE 256
 #define BLOCK_SIZE 1024
 
-uint32_t  crc_x64_32_tab[HASH_TAB_SIZE] = {
+uint32_t crc_x64_32_tab[HASH_TAB_SIZE] = {
     0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f,
     0xe963a535, 0x9e6495a3, 0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
     0x09b64c2b, 0x7eb17cbd, 0xe7b82d07, 0x90bf1d91, 0x1db71064, 0x6ab020f2,
@@ -68,7 +68,6 @@ template <typename T>
 __device__ uint32_t crc_x64_32_hash(const T* d_key_columns,
                                    const int num_key_columns,
                                    const int num_key_rows,
-                                   const uint32_t seed,
-                                   const int row);
+                                   const int row_idx);
 
 #endif //_HASH_FUNCTION_H_

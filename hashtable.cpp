@@ -7,7 +7,6 @@ __global__ void init_hash_kernel(hashbucket<T>* d_hashtable)
     int row = threadIdx.x + blockDim.x * blockIdx.x;
     if (row < hash_table_rows) {
         d_hashtable[row].key_row = EMPTYMARKER;
-        d_hashtable[row].row_count = 0;
         d_hashtable[row].max = 0;
         d_hashtable[row].min = 0;
         d_hashtable[row].sum = 0;
