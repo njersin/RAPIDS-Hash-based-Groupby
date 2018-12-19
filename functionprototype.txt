@@ -1,0 +1,12 @@
+template <typename T>
+
+groupby( T* key_columns[], int num_key_columns, int num_key_rows,
+
+T* value_columns[], int num_value_columns, int num_value_rows,
+
+reduction_op ops[], int num_ops, T* output_keys[], T* output_values[]);
+
+
+1. You can assume all datatypes are known at compile-time. The number of columns is not known at compile time.
+2. If the keys are floating point, then it is sufficient to just check for bit-wise equality. Don’t worry about doing some kind of tolerance.
+3. Yes, for column-major layout, the elements in a column are contiguous in memory.
