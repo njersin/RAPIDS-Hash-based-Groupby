@@ -5,10 +5,9 @@
 #include "hashtable.h"
 #include "hashkernel.h"
 
-
 using namespace std;
 
-void main()
+void main(int argc, char *argv[])
 {
   //generate input data
   int *h_key_cols[];
@@ -21,6 +20,8 @@ void main()
   int n_ops;
   int *out_keys[];
   int *out_values[];
+
+
 
 
 
