@@ -6,6 +6,13 @@
 enum reduction_op {max, min, sum, count};
 
 template <typename T>
+struct output_data {
+    T* keys;
+    T* values;
+    int unique_keys;
+}
+
+template <typename T>
 __host__ int getnumdistinctkeys(T* h_key_columns, int num_key_columns, int num_key_rows);
 
 
@@ -21,16 +28,16 @@ __global__ void groupbykernel(T* d_key_columns, int num_key_columns, int num_key
                              hashbucket<T>* d_hashtable, int hash_table_rows, int* d_unique_keys);
 
 template <typename T>
-__global__ void getouputdatakernel(T* d_output_keys, int num_key_columns,
-                                   T* d_output_values, int num_value_columns,
-                                   int num_unique_keys);
+__global__ void getouputdatakernel(T* d_output_keys, int num_key_columns, int num_key_rows
+                                   T* d_output_values, int num_value_columns, int num_value_rows,
+                                   hashbucket<T>* d_hashtable, int num_unique_keys, int hash_table_rows,
+                                   reduction_op reduct_ops[], int num_ops, T* d_key_columns);
 
 
 template <typename T>
-__host__ void groupby(T* h_key_columns, int num_key_columns, int num_key_rows,
-                      T* h_value_columns, int num_value_columns, int num_value_rows,
-                      reduction_op ops[], int num_ops,
-                      T* output_keys, T* output_values);
+__host__ struct output_data groupby(T* h_key_columns, int num_key_columns, int num_key_rows,
+                                    T* h_value_columns, int num_value_columns, int num_value_rows,
+                                    reduction_op ops[], int num_ops);
 
 
 #endif //_HASH_KERNEL_H_

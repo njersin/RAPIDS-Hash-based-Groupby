@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <chrono>
 #include "hashtable.h"
 #include "hashfunction.h"
 #include "hashkernel.h"
@@ -86,21 +87,56 @@ __global__ void groupbykernel(T* d_key_columns, int num_key_columns, int num_key
 
 
 template <typename T>
-__global__ void getouputdatakernel(T* d_output_keys, int num_key_columns,
-                                   T* d_output_values, int num_value_columns,
-                                   int num_unique_keys)
+__global__ void getouputdatakernel(T* d_output_keys, int num_key_columns, int num_key_rows,
+                                   T* d_output_values, int num_value_columns, int num_value_rows,
+                                   hashbucket<T>* d_hashtable, int num_unique_keys, int hash_table_rows,
+                                   reduction_op reduct_ops[], int num_ops, T* d_key_columns)
 {
-    
+    int output_row = threadIdx.x + blockIdx.x * blockDim.x;
 
+    if (output_row < num_unique_keys) {
 
+        int scan_size = (hash_table_rows / num_unique_keys);
+        int num_scan_rows = scan_size;
+        if ((output_row = num_unique_keys - 1) && (num_key_rows % num_unique_keys)) {
+            num_scan_rows += 1;
+        }
+
+        int start_row = output_row * scan_size;
+        hashbucket<T> bucket;
+
+        for (int i = 0; i < num_scan_rows; i++) {
+            start_row += i;
+            bucket = d_hashtable[start_row];
+            if (bucket.key_row != EMPTYMARKER) {
+
+                //copy row
+                for (int j = 0; j < num_key_columns; j++) {
+                    d_output_keys[j * num_unique_keys + output_row] = d_key_columns[j * num_key_rows + bucket.key_row];
+                }
+
+                //copy reduction values
+                for (int k = 0; k < num_ops; k++) {
+                    if (reduct_ops[k] == max) {
+                        d_output_values[k * num_unique_keys + output_row] = bucket.max;
+                    } else if (reduct_ops[k] == min) {
+                        d_output_values[k * num_unique_keys + output_row] = bucket.min;
+                    } else if (reduct_ops[k] == sum) {
+                        d_output_values[k * num_unique_keys + output_row] = bucket.sum;
+                    } else if (reduct_ops[k] == count) {
+                        d_output_values[k * num_unique_keys + output_row] = bucket.count;
+                    }
+                }
+            }
+        }
+    }
 }
 
 
 template <typename T>
-__host__ void groupby(T* h_key_columns, int num_key_columns, int num_key_rows,
-                      T* h_value_columns, int num_value_columns, int num_value_rows,
-                      reduction_op ops[], int num_ops,
-                      T* output_keys, T* output_values)
+__host__ struct output_data groupby(T* h_key_columns, int num_key_columns, int num_key_rows,
+                                    T* h_value_columns, int num_value_columns, int num_value_rows,
+                                    reduction_op ops[], int num_ops)
 {
 
   //get number of unique keys
@@ -147,8 +183,9 @@ __host__ void groupby(T* h_key_columns, int num_key_columns, int num_key_rows,
   int output_key_size = h_num_unique_keys * num_key_columns * sizeof(T);
   int output_values_size = h_num_unique_keys * num_value_columns * sizeof(T);
 
-  T* h_output_keys = (T *) malloc(output_key_size);
-  T* h_output_values = (T *) malloc(output_values_size);
+  T* h_output_keys, h_output_values;
+  cudaMallocHost(&h_output_keys, output_key_size);
+  cudaMallocHost(&h_output_values, output_values_size);
 
   T* d_output_keys, d_output_values;
   cudaMalloc((void **) &d_output_keys, output_key_size);
@@ -156,17 +193,19 @@ __host__ void groupby(T* h_key_columns, int num_key_columns, int num_key_rows,
 
   //launch kernel to summarize results in output format
   dim3 dimGrid((h_num_unique_keys + BLOCK_SIZE - 1) / BLOCK_SIZE, 1, 1);
-  getouputdatakernel<T><<<dimGrid, dimBlock>>>(d_output_keys, num_key_columns,
-                                               d_output_values, num_value_columns,
-                                               h_num_unique_keys);
+  getouputdatakernel<T><<<dimGrid, dimBlock>>>(d_output_keys, num_key_columns, num_key_rows,
+                                               d_output_values, num_value_columns, num_value_rows
+                                               d_hashtable, h_num_unique_keys, hash_table_rows,
+                                               reduct_ops, num_ops, d_key_columns);
 
   //copy results back to host
   cudaMemcpy(h_output_keys, d_output_keys, output_key_size, cudaMemcpyDeviceToHost);
   cudaMemcpy(h_output_values, d_output_values, output_values_size, cudaMemcpyDeviceToHost);
 
-  //print results
-
-
+  struct output_data<T> output;
+  output.keys = h_output_keys;
+  output.values = h_output_values;
+  output.unique_keys = h_num_unique_keys;
 
   //free device memory
   cudaFree(d_num_unique_keys);
@@ -175,4 +214,6 @@ __host__ void groupby(T* h_key_columns, int num_key_columns, int num_key_rows,
   cudaFree(d_value_columns);
   cudaFree(d_output_keys);
   cudaFree(d_output_values);
+
+  return output;
 }

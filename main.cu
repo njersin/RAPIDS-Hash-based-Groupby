@@ -4,14 +4,12 @@
 #include <cuda_runtime_api.h>
 #include <chrono>
 #include <cpuGroupby.h>
-#include "hashtable.h"
 #include "hashkernel.h"
 
 using namespace std;
 
 int main(int argc, char *argv[])
 {
-        
 
   using Time = std::chrono::high_resolution_clock;
   using fsec = std::chrono::duration<float>;
@@ -43,37 +41,42 @@ int main(int argc, char *argv[])
   cudaMallocHost((void**)&original_value_columns, sizeof(int)*num_val_cols*num_rows);
   std::copy(slowGroupby.key_columns, slowGroupby.key_columns + num_key_cols*num_rows, original_key_columns);
   std::copy(slowGroupby.value_columns, slowGroupby.value_columns + num_val_cols*num_rows, original_value_columns);
-        
+
   auto start = Time::now();
 
   slowGroupby.groupby();
 
-  auto end = Time::now(); 
+  auto end = Time::now();
   fsec cpu_duration = end - start;
 
 
-  int *gpu_output_keys, *gpu_output_values;
-  int gpu_output_rows = 0;
-  gpu_output_keys = (int *)malloc(slowGroupby.num_key_rows*slowGroupby.num_key_columns * sizeof(int));
-  gpu_output_values = (int *)malloc(slowGroupby.num_value_rows*slowGroupby.num_value_columns * sizeof(int));
-
+  //run gpu kernel
   start = Time::now();
 
-  // Insert GPU function calls here...	
-	
+  int num_ops = 4;
+  reduction_op ops[4] = {max, min, sum, count};
+
+  struct output_data<int> gpu_output;
+  gpu_output = groupby<int>(original_key_columns, num_key_cols, num_rows,
+                            original_value_columns, num_val_cols, num_rows,
+                            ops, num_ops)
   end = Time::now();
-        
-  slowGroupby.printGPUResults(gpu_output_keys, gpu_output_values);
+
+  //print gpu results
+  slowGroupby.printGPUResults(gpu_output.keys, gpu_output.values);
 
   fsec gpu_duration = end - start;
 
   cout << "CPU time: " << cpu_duration.count() << " s" << endl;
   cout << "GPU time: " << gpu_duration.count() << " s" << endl;
 
-  slowGroupby.validGPUResult(gpu_output_keys, gpu_output_values, gpu_output_rows);
+  //validate gpu results
+  slowGroupby.validGPUResult(gpu_output.keys, gpu_output.values, gpu_output.unique_keys);
 
   cudaFreeHost(original_value_columns);
   cudaFreeHost(original_key_columns);
+  cudaFreeHost(gpu_output.keys);
+  cudaFreeHost(gpu_output.values);
   return 0;
 
 }
