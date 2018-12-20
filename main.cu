@@ -3,8 +3,8 @@
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 #include <chrono>
-#include <cpuGroupby.h>
-#include "hashkernel.h"
+#include "cpuGroupby.h"
+#include "hashkernel.cuh"
 
 using namespace std;
 
@@ -18,18 +18,25 @@ int main(int argc, char *argv[])
   int num_key_cols = 2;
   int num_val_cols = 3;
   int num_distinct_keys = 3;
-  if (argc == 2){
-    num_rows = atoi(argv[1]);
-  }else if(argc ==4){
-    num_rows = atoi(argv[1]);
-    num_key_cols = atoi(argv[2]);
-    num_val_cols = atoi(argv[3]);
-  }else if(argc ==5){
-    num_rows = atoi(argv[1]);
-    num_key_cols = atoi(argv[2]);
-    num_val_cols = atoi(argv[3]);
-    num_distinct_keys = atoi(argv[4]);
+
+  if (argc == 2) {
+
+      num_rows = atoi(argv[1]);
+
+  } else if(argc == 4) {
+
+      num_rows = atoi(argv[1]);
+      num_key_cols = atoi(argv[2]);
+      num_val_cols = atoi(argv[3]);
+
+  } else if(argc == 5) {
+
+      num_rows = atoi(argv[1]);
+      num_key_cols = atoi(argv[2]);
+      num_val_cols = atoi(argv[3]);
+      num_distinct_keys = atoi(argv[4]);
   }
+
   // Setting up the CPU groupby
   cpuGroupby slowGroupby(num_key_cols, num_val_cols, num_rows);
 
@@ -49,17 +56,16 @@ int main(int argc, char *argv[])
   auto end = Time::now();
   fsec cpu_duration = end - start;
 
-
   //run gpu kernel
   start = Time::now();
 
   int num_ops = 4;
-  reduction_op ops[4] = {max, min, sum, count};
+  reduction_op ops[4] = {max_op, min_op, sum, count};
 
   struct output_data<int> gpu_output;
   gpu_output = groupby<int>(original_key_columns, num_key_cols, num_rows,
                             original_value_columns, num_val_cols, num_rows,
-                            ops, num_ops)
+                            ops, num_ops);
   end = Time::now();
 
   //print gpu results

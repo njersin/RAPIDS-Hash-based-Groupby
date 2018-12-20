@@ -1,4 +1,4 @@
-#include "hashfunction.h"
+#include "hashfunction.cuh"
 
 template <typename T>
 __device__ uint8_t retrieve_byte(const T* d_key_columns,

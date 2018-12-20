@@ -7,12 +7,12 @@
 //
 
 #include <iostream>
-#include "cpuGroupby.h"
 #include <time.h>
 #include <cstdlib>
 #include <vector>
 #include <numeric>
 #include <algorithm>
+#include "cpuGroupby.h"
 
 void cpuGroupby::fillRand(int distinctKeys, int distinctVals) {
     srand((unsigned int)time(NULL));
@@ -58,7 +58,7 @@ void cpuGroupby::quickSort(int* array, int lowIdx, int highIdx) {
         /* pi is partitioning index, arr[pi] is now
          at right place */
         int pi = partition(array, lowIdx, highIdx);
-        
+
         quickSort(array, lowIdx, pi - 1);  // Before pi
         quickSort(array, pi + 1, highIdx); // After pi
     }
@@ -67,7 +67,7 @@ void cpuGroupby::quickSort(int* array, int lowIdx, int highIdx) {
 void cpuGroupby::libsort() {
   std::vector<int> idx(num_key_rows);
   std::iota(idx.begin(), idx.end(), 0);
-  std::sort(idx.begin(), idx.end(), 
+  std::sort(idx.begin(), idx.end(),
 	    [=] (const int idx1, const int idx2) {
 	      for (int i = 0; i < num_key_columns; ++i) {
 		int data1 = key_columns[i * num_key_rows + idx1];
@@ -95,7 +95,7 @@ void cpuGroupby::libsort() {
 int cpuGroupby::partition (int* array, int lowIdx, int highIdx) {
     // pivot (Element to be placed at right position)
     int pivotIdx = highIdx;
-    
+
     int i = (lowIdx - 1);  // Index of smaller element
     for (int j = lowIdx; j <= highIdx-1; j++) {
         // If current element is smaller than or
@@ -105,7 +105,7 @@ int cpuGroupby::partition (int* array, int lowIdx, int highIdx) {
             swapValuesAtRows(i, j);
         }
     }
-    
+
     swapValuesAtRows(i+1, highIdx);
     return (i + 1);
 }
@@ -133,7 +133,7 @@ bool cpuGroupby::keyAtFirstIndexIsBigger(int rowOne, int rowTwo) {
     if(keyIdx >= num_key_columns) {
         return false;
     }
-    
+
     //see if key at cRow is greater than key at cRow+1
     if (key_columns[keyIdx*num_key_rows + rowOne] > key_columns[keyIdx*num_key_rows + rowTwo]) {
         return true;
@@ -145,13 +145,13 @@ bool cpuGroupby::keyAtFirstIndexIsBigger(int rowOne, int rowTwo) {
 
 bool cpuGroupby::nextKeyBigger(int cRow) {
     int keyIdx=0;
-    
+
     for (keyIdx=0; keyIdx<num_key_columns && key_columns[keyIdx*num_key_rows + cRow] == key_columns[keyIdx*num_key_rows + cRow+1]; keyIdx++);
     // fix for equal keys
     if(keyIdx >= num_key_columns) {
     	return false;
     }
-    
+
     //see if key at cRow is greater than key at cRow+1
     if (key_columns[keyIdx*num_key_rows + cRow] > key_columns[keyIdx*num_key_rows + cRow+1]) {
         return false;
@@ -198,7 +198,7 @@ void cpuGroupby::getNumGroups() {
 void cpuGroupby::getGroupPtr() {
     // Allocate the group pointer array
     groupPtr = (int*) malloc(sizeof(int)*numGroups);
-    
+
     // Fill it
     for (int i=0; i<numGroups; i++) {
         groupPtr[i] = tempCol[i];
@@ -216,10 +216,10 @@ void cpuGroupby::groupby() {
     //sort();
     //quickSort(key_columns, 0, num_key_rows);
     libsort();
-    
+
     getNumGroups();
     // printData();
-    
+
     allocResultArray();
     getGroupPtr();
     writeOutputKeys();
@@ -255,7 +255,7 @@ void cpuGroupby::doReductionOps() {
 void cpuGroupby::rMax(int valIdx) {
     int maximum = -999999999;
     int tempVal;
-    
+
     for (int groupIdx=1; groupIdx<numGroups; groupIdx++) {
         maximum = -999999999;
         for (int subIdx=0; subIdx<groupPtr[groupIdx]-groupPtr[groupIdx-1]; subIdx++) {
@@ -267,7 +267,7 @@ void cpuGroupby::rMax(int valIdx) {
         // Copy values to the output array
         output_values[valIdx*numGroups + groupIdx-1] = maximum;
     }
-    
+
     //Handeling the final group
     maximum = -999999999;
     for (int subIdx=groupPtr[numGroups-1]; subIdx<num_value_rows; subIdx++) {
@@ -283,7 +283,7 @@ void cpuGroupby::rMax(int valIdx) {
 void cpuGroupby::rMin(int valIdx) {
     int minimum = 999999999;
     int tempVal;
-    
+
     for (int groupIdx=1; groupIdx<numGroups; groupIdx++) {
         minimum = 999999999;
         for (int subIdx=0; subIdx<groupPtr[groupIdx]-groupPtr[groupIdx-1]; subIdx++) {
@@ -295,7 +295,7 @@ void cpuGroupby::rMin(int valIdx) {
         // Copy values to the output array
         output_values[valIdx*numGroups + groupIdx-1] = minimum;
     }
-    
+
     //Handeling the final group
     minimum = 999999999;
     for (int subIdx=groupPtr[numGroups-1]; subIdx<num_value_rows; subIdx++) {
@@ -320,7 +320,7 @@ void cpuGroupby::rMean(int valIdx) {
         mean = sum / (groupPtr[groupIdx]-groupPtr[groupIdx-1]);
         output_values[valIdx*numGroups + groupIdx-1] = mean;
     }
-    
+
     //Handeling the final group
     sum = 0;
     for (int subIdx=groupPtr[numGroups-1]; subIdx<num_value_rows; subIdx++) {
@@ -341,7 +341,7 @@ void cpuGroupby::rSum(int valIdx) {
         // Copy values to the output array
         output_values[valIdx*numGroups + groupIdx-1] = sum;
     }
-    
+
     //Handeling the final group
     sum = 0;
     for (int subIdx=groupPtr[numGroups-1]; subIdx<num_value_rows; subIdx++) {
@@ -355,11 +355,11 @@ void cpuGroupby::rCount(int valIdx) {
     int count = 0;
     for (int groupIdx=1; groupIdx<numGroups; groupIdx++) {
         count = groupPtr[groupIdx]-groupPtr[groupIdx-1];
-        
+
         // Copy values to the output array
         output_values[valIdx*numGroups + groupIdx-1] = count;
     }
-    
+
     // Handling the final group
     count = num_value_rows-groupPtr[numGroups-1];
     output_values[valIdx*numGroups + numGroups-1] = count;
@@ -380,7 +380,7 @@ void cpuGroupby::writeOutputKeys() {
 // Debug / Printing Functions
 void cpuGroupby::printData() {
     cout << "Printing Data..." << endl;
-    
+
     for (int cRow=0; cRow<num_key_rows; cRow++) {
         //print keys for a row
         for (int keyIdx=0; keyIdx<num_key_columns; keyIdx++) {
@@ -408,13 +408,13 @@ void cpuGroupby::printData() {
         }
         cout << endl;
     }
-    
+
     cout << "End Printing Data" << endl << endl;
 }
 
 void cpuGroupby::printResults() {
     cout << "Printing Results..." << endl;
-    
+
     for (int cRow=0; cRow<numGroups; cRow++) {
         //print keys for a row
         for (int keyIdx=0; keyIdx<num_key_columns; keyIdx++) {
@@ -442,13 +442,13 @@ void cpuGroupby::printResults() {
         }
         cout << endl;
     }
-    
+
     cout << "End Printing Results" << endl;
 }
 
 void cpuGroupby::printGPUResults(int* GPU_output_keys, int* GPU_output_values){
     cout << "Printing GPU Results..." << endl;
-    
+
     for (int cRow=0; cRow<numGroups; cRow++) {
         //print keys for a row
         for (int keyIdx=0; keyIdx<num_key_columns; keyIdx++) {
@@ -476,7 +476,7 @@ void cpuGroupby::printGPUResults(int* GPU_output_keys, int* GPU_output_values){
         }
         cout << endl;
     }
-    
+
     cout << "End GPU Printing Results" << endl;
 }
 
@@ -495,7 +495,7 @@ bool cpuGroupby::validGPUResult(int* GPUKeys, int* GPUValues, int GPUOutputRows)
             return false;
         }
     }
-    cout << "PASSED - CPU data == GPU data " << endl;   
+    cout << "PASSED - CPU data == GPU data " << endl;
     return true;
 }
 
@@ -517,13 +517,10 @@ cpuGroupby::cpuGroupby(int numKeys, int numValues, int numRows) {
     num_value_columns = numValues;
     num_value_rows = numRows;
     num_ops = numValues;
-    
+
     // Allocate key & value arrays
     key_columns = (int *)malloc(sizeof(int)*num_key_columns*num_key_rows);
     value_columns = (int *)malloc(sizeof(int)*num_value_columns*num_value_rows);
     tempCol = (int *)malloc(sizeof(int)*num_value_rows);
     ops = (reductionType*)malloc(sizeof(reductionType)*num_ops);
 }
-
-
-
