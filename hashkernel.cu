@@ -128,12 +128,13 @@ __global__ void getouputdatakernel(T* d_output_keys, int num_key_columns, int nu
 
 template <typename T>
 __host__ struct output_data<T> groupby(T* h_key_columns, int num_key_columns, int num_key_rows,
-                                    T* h_value_columns, int num_value_columns, int num_value_rows,
-                                    reduction_op ops[], int num_ops)
+                                       T* h_value_columns, int num_value_columns, int num_value_rows,
+                                       reduction_op ops[], int num_ops)
 {
 
   //get number of unique keys
-  int* h_num_unique_keys, d_num_unique_keys;
+  int* h_num_unique_keys;
+  int* d_num_unique_keys;
   cudaMallocHost(&h_num_unique_keys, sizeof(int));
   cudaMalloc((void **) &d_num_unique_keys, sizeof(int));
   int hash_table_rows = getnumdistinctkeys<T>(h_key_columns, num_key_columns, num_key_rows);
@@ -147,7 +148,8 @@ __host__ struct output_data<T> groupby(T* h_key_columns, int num_key_columns, in
   init_hash_table<T>(d_hashtable, hash_table_rows);
 
   //transfer keys and values data to device
-  T* d_key_columns, d_value_columns;
+  T* d_key_columns;
+  T* d_value_columns;
 
   int key_data_size = num_key_rows * num_key_columns * sizeof(T);
   cudaMalloc((void **)&d_key_columns, key_data_size);
@@ -182,11 +184,13 @@ __host__ struct output_data<T> groupby(T* h_key_columns, int num_key_columns, in
   int output_key_size = *(h_num_unique_keys) * num_key_columns * sizeof(T);
   int output_values_size = *(h_num_unique_keys) * num_value_columns * sizeof(T);
 
-  T* h_output_keys, h_output_values;
+  T* h_output_keys;
+  T* h_output_values;
   cudaMallocHost(&h_output_keys, output_key_size);
   cudaMallocHost(&h_output_values, output_values_size);
 
-  T* d_output_keys, d_output_values;
+  T* d_output_keys;
+  T* d_output_values;
   cudaMalloc((void **) &d_output_keys, output_key_size);
   cudaMalloc((void **) &d_output_values, output_values_size);
 

@@ -7,7 +7,6 @@
 #include <stdint.h>
 
 #define HASH_TAB_SIZE 256
-#define BLOCK_SIZE 1024
 
 __constant__ uint32_t c_crc_x64_32_tab[HASH_TAB_SIZE];
 

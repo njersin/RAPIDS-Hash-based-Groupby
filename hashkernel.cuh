@@ -8,8 +8,6 @@
 #include "hashtable.cuh"
 #include "hashfunction.cuh"
 
-#define EMPTYMARKER -1
-
 enum reduction_op {max_op, min_op, sum, count};
 
 template <typename T>

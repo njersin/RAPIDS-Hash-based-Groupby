@@ -7,10 +7,10 @@
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 
-using namespace std;
-
-#define EMPTYMARKER -1
 #define BLOCK_SIZE 1024
+#define EMPTYMARKER -1
+
+using namespace std;
 
 template <typename T>
 struct hashbucket {
